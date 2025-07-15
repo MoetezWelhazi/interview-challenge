@@ -1,6 +1,8 @@
 "use client"
-
+import React from 'react';
 import { useEffect, useState } from 'react';
+import { Skeleton } from "../components/Skeleton";
+import { Button } from "../components/Button";
 
 const API = "http://localhost:8080";
 
@@ -9,11 +11,13 @@ type SampleEntity = { id: number; name: string };
 export default function Home() {
   const [samples, setSamples] = useState<SampleEntity[]>([]);
   const [name, setName] = useState('');
+  const [loading, setLoading] = useState(true);
 
   const fetchSamples = async () => {
     const res = await fetch(`${API}/sample`);
     const data = await res.json();
     setSamples(data);
+    setLoading(false);
   };
 
   const createSample = async () => {
@@ -42,17 +46,25 @@ export default function Home() {
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
-        <button onClick={createSample} className="bg-blue-600 text-white px-4 py-1 rounded">
+        <Button onClick={createSample} className="bg-blue-600 text-white px-4 py-1 rounded">
           Add
-        </button>
+        </Button>
       </div>
 
       <ul className="space-y-1">
-        {samples.map((s) => (
-          <li key={s.id} className="border-b pb-1">
-            #{s.id} - {s.name}
-          </li>
-        ))}
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <li key={i} className="border-b pb-1">
+              <Skeleton width="60%" height={20} />
+            </li>
+          ))
+        ) : (
+          samples.map((s) => (
+            <li key={s.id} className="border-b pb-1">
+              #{s.id} - {s.name}
+            </li>
+          ))
+        )}
       </ul>
     </div>
   );
