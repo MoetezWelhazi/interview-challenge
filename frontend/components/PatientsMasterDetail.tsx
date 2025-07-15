@@ -34,12 +34,27 @@ export function PatientsMasterDetail({ patients, defaultPatientId }: { patients:
   const debouncedSearch = useDebounce(search, 300);
   const [showModal, setShowModal] = useState(false);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [assignmentPage, setAssignmentPage] = useState(1);
+  const ASSIGNMENTS_PER_PAGE = 5;
+  const [assignmentSortDir, setAssignmentSortDir] = useState<'asc' | 'desc'>('desc');
+  const sortedAssignments = [...assignments].sort((a, b) => {
+    if (assignmentSortDir === 'asc') {
+      return (a.remainingDays ?? 0) - (b.remainingDays ?? 0);
+    } else {
+      return (b.remainingDays ?? 0) - (a.remainingDays ?? 0);
+    }
+  });
+  const paginatedAssignments = sortedAssignments.slice((assignmentPage - 1) * ASSIGNMENTS_PER_PAGE, assignmentPage * ASSIGNMENTS_PER_PAGE);
+  const totalAssignmentPages = Math.ceil(assignments.length / ASSIGNMENTS_PER_PAGE);
 
   useEffect(() => {
     if (!selectedId) return;
     setLoading(true);
     apiGet(`/patients/${selectedId}/assignments/remaining-days`)
-      .then(setAssignments)
+      .then(data => {
+        setAssignments(data);
+        setAssignmentPage(1); // Reset to first page on patient change
+      })
       .finally(() => setLoading(false));
   }, [selectedId]);
 
@@ -184,34 +199,64 @@ export function PatientsMasterDetail({ patients, defaultPatientId }: { patients:
           <>
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-lg font-bold">Assignments</h2>
-              <Button
-                className="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition-colors text-xs"
-                onClick={() => setShowAssignmentModal(true)}
-              >
-                + Add Assignment
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  className="px-2 py-1 rounded border text-xs"
+                  onClick={() => setAssignmentSortDir(d => d === 'asc' ? 'desc' : 'asc')}
+                  aria-label="Toggle sort order"
+                >
+                  Sort by Remaining {assignmentSortDir === 'asc' ? '↑' : '↓'}
+                </Button>
+                <Button
+                  className="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition-colors text-xs"
+                  onClick={() => setShowAssignmentModal(true)}
+                >
+                  + Add Assignment
+                </Button>
+              </div>
             </div>
             {loading ? (
               <div>Loading...</div>
             ) : assignments.length ? (
-              <ul className="space-y-2">
-                {assignments.map((a) => (
-                  <li key={a.id} className={`p-3 rounded border ${a.remainingDays === 0 ? "bg-gray-100 text-gray-500" : "bg-green-50 border-green-200"}`}>
-                    <div className="font-semibold">{a.medication?.name}</div>
-                    <div className="text-xs">Start: {a.startDate} | Days: {a.days}</div>
-                    <div className="text-xs">
-                      Remaining: <span className="font-mono">{a.remainingDays}</span> — 
-                      <span className={
-                        a.remainingDays === 0
-                          ? "bg-gray-200 text-gray-600 rounded px-2 py-0.5 text-xs font-semibold inline-block"
-                          : "bg-green-100 text-green-800 rounded px-2 py-0.5 text-xs font-semibold inline-block ml-1"
-                      }>
-                        {a.remainingDays === 0 ? "Completed" : "Active"}
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <ul className="space-y-2">
+                  {paginatedAssignments.map((a) => (
+                    <li key={a.id} className={`p-3 rounded border ${a.remainingDays === 0 ? "bg-gray-100 text-gray-500" : "bg-green-50 border-green-200"}`}>
+                      <div className="font-semibold">{a.medication?.name}</div>
+                      <div className="text-xs">Start: {a.startDate} | Days: {a.days}</div>
+                      <div className="text-xs">
+                        Remaining: <span className="font-mono">{a.remainingDays}</span> — 
+                        <span className={
+                          a.remainingDays === 0
+                            ? "bg-gray-200 text-gray-600 rounded px-2 py-0.5 text-xs font-semibold inline-block"
+                            : "bg-green-100 text-green-800 rounded px-2 py-0.5 text-xs font-semibold inline-block ml-1"
+                        }>
+                          {a.remainingDays === 0 ? "Completed" : "Active"}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                {totalAssignmentPages > 1 && (
+                  <div className="flex justify-center items-center gap-2 mt-4">
+                    <Button
+                      className="px-2 py-1 rounded border"
+                      onClick={() => setAssignmentPage(p => Math.max(1, p - 1))}
+                      disabled={assignmentPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-sm">Page {assignmentPage} of {totalAssignmentPages}</span>
+                    <Button
+                      className="px-2 py-1 rounded border"
+                      onClick={() => setAssignmentPage(p => Math.min(totalAssignmentPages, p + 1))}
+                      disabled={assignmentPage === totalAssignmentPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="text-gray-400">No assignments for this patient.</div>
             )}

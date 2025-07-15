@@ -4,6 +4,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { Button } from './Button';
 import { Skeleton } from "./Skeleton";
+import { NewMedicationForm } from './NewMedicationForm';
 
 interface Medication {
   id: number;
@@ -29,12 +30,16 @@ export function MedicationsPage({ initialMedications = [] }: { initialMedication
   const [editFrequency, setEditFrequency] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [loading, setLoading] = useState(initialMedications.length === 0);
+  const [medicationPage, setMedicationPage] = useState(1);
+  const [medicationsPerPage, setMedicationsPerPage] = useState(5);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     if (initialMedications.length === 0) {
       apiGet('/medications').then(data => {
         setMedications(data);
         setLoading(false);
+        setMedicationPage(1); // Reset to first page on data load
       });
     }
   }, [initialMedications]);
@@ -66,6 +71,8 @@ export function MedicationsPage({ initialMedications = [] }: { initialMedication
     if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
     return 0;
   });
+  const totalMedicationPages = Math.ceil(sorted.length / medicationsPerPage);
+  const paginatedMedications = sorted.slice((medicationPage - 1) * medicationsPerPage, medicationPage * medicationsPerPage);
 
   const startEdit = (m: Medication) => {
     setEditingId(m.id);
@@ -103,7 +110,15 @@ export function MedicationsPage({ initialMedications = [] }: { initialMedication
 
   return (
     <div className="max-w-3xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Medications</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold">Medications</h1>
+        <Button
+          className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors text-sm"
+          onClick={() => setShowModal(true)}
+        >
+          + Add Medication
+        </Button>
+      </div>
       <div className="flex flex-col md:flex-row gap-2 mb-4">
         <input
           type="text"
@@ -123,10 +138,23 @@ export function MedicationsPage({ initialMedications = [] }: { initialMedication
         </select>
         <Button
           onClick={() => setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))}
+          className="px-2 py-1 border rounded"
           aria-label="Toggle sort direction"
         >
-          {sortDir === 'asc' ? '\u2191' : '\u2193'}
+          {sortDir === 'asc' ? '↑' : '↓'}
         </Button>
+        <select
+          value={medicationsPerPage}
+          onChange={e => {
+            setMedicationsPerPage(Number(e.target.value));
+            setMedicationPage(1); // Reset to first page when page size changes
+          }}
+          className="px-2 py-1 border rounded"
+        >
+          {[5, 10, 15, 25, 50].map(size => (
+            <option key={size} value={size}>{size} / page</option>
+          ))}
+        </select>
       </div>
       <ul className="divide-y divide-gray-200 bg-white rounded shadow">
         {loading ? (
@@ -138,7 +166,7 @@ export function MedicationsPage({ initialMedications = [] }: { initialMedication
             </li>
           ))
         ) : (
-          sorted.map(m => (
+          paginatedMedications.map(m => (
             <li key={m.id} className="p-3 flex flex-col md:flex-row md:items-center md:gap-4 min-w-0">
               {editingId === m.id ? (
                 <form
@@ -201,6 +229,49 @@ export function MedicationsPage({ initialMedications = [] }: { initialMedication
           <li className="p-3 text-gray-400">No medications found.</li>
         )}
       </ul>
+      {totalMedicationPages > 1 && !loading && (
+        <div className="flex justify-center items-center gap-2 mt-4">
+          <Button
+            className="px-2 py-1 rounded border"
+            onClick={() => setMedicationPage(p => Math.max(1, p - 1))}
+            disabled={medicationPage === 1}
+          >
+            Previous
+          </Button>
+          <span className="text-sm">Page {medicationPage} of {totalMedicationPages}</span>
+          <Button
+            className="px-2 py-1 rounded border"
+            onClick={() => setMedicationPage(p => Math.min(totalMedicationPages, p + 1))}
+            disabled={medicationPage === totalMedicationPages}
+          >
+            Next
+          </Button>
+        </div>
+      )}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Overlay first, lower z-index */}
+          <div
+            className="fixed inset-0 bg-black bg-opacity-40 z-40"
+            onClick={() => setShowModal(false)}
+            aria-label="Close modal overlay"
+          />
+          {/* Modal content, higher z-index */}
+          <div className="bg-white rounded shadow-lg max-w-md w-full relative z-50">
+            <button
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 text-2xl"
+              onClick={() => setShowModal(false)}
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            <NewMedicationForm onSuccess={() => {
+              setShowModal(false);
+              apiGet('/medications').then(setMedications);
+            }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
