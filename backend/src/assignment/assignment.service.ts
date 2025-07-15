@@ -84,4 +84,12 @@ export class AssignmentService {
       remainingDays: calculateRemainingDays(a.startDate, a.days),
     }));
   }
+
+  async getRemainingDaysForAllAssignments(): Promise<any[]> {
+    const assignments = await this.assignmentRepo.find();
+    return assignments.map(a => ({
+      ...a,
+      remainingDays: calculateRemainingDays(a.startDate, a.days),
+    }));
+  }
 } 

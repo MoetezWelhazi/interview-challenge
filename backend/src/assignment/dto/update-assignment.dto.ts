@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsDateString } from 'class-validator';
+import { IsInt, IsOptional, IsDateString, Min, IsPositive } from 'class-validator';
 
 export class UpdateAssignmentDto {
   @IsInt()
@@ -14,6 +14,8 @@ export class UpdateAssignmentDto {
   startDate?: string;
 
   @IsInt()
+  @IsPositive()
+  @Min(1)
   @IsOptional()
   days?: number;
 } 

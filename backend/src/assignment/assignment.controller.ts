@@ -25,6 +25,11 @@ export class AssignmentController {
     return this.assignmentService.findAll();
   }
 
+  @Get('assignments/remaining-days')
+  async getAllRemainingDays() {
+    return this.assignmentService.getRemainingDaysForAllAssignments();
+  }
+
   @Get('assignments/:id')
   async findOne(@Param('id', ParseIntPipe) id: number) {
     return this.assignmentService.findOne(id);

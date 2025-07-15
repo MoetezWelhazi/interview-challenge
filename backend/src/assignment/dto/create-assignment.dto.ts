@@ -1,4 +1,4 @@
-import { IsInt, IsNotEmpty, IsDateString } from 'class-validator';
+import { IsInt, IsNotEmpty, IsDateString, Min, IsPositive } from 'class-validator';
 
 export class CreateAssignmentDto {
   @IsInt()
@@ -13,5 +13,7 @@ export class CreateAssignmentDto {
   startDate: string;
 
   @IsInt()
+  @IsPositive()
+  @Min(1)
   days: number;
 } 
