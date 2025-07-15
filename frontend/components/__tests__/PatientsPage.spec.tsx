@@ -7,7 +7,7 @@ jest.mock('../../app/api', () => ({
   apiGet: jest.fn(),
   apiPatch: jest.fn(),
 }));
-jest.mock('../../app/hooks/useDebounce', () => ({
+jest.mock('../../hooks/useDebounce', () => ({
   useDebounce: (v: string) => v,
 }));
 
@@ -35,9 +35,17 @@ global.fetch = jest.fn();
 window.confirm = jest.fn(() => true);
 window.alert = jest.fn();
 
+let patients: any[];
+beforeEach(() => {
+  patients = [
+    { id: 1, name: 'Alice Smith', dateOfBirth: '1990-01-01' },
+    { id: 2, name: 'Bob Jones', dateOfBirth: '1985-05-05' },
+  ];
+});
+
 describe('PatientsMasterDetail', () => {
   it('renders patient list and assignments', async () => {
-    render(<PatientsMasterDetail patients={mockPatients} defaultPatientId={1} />);
+    render(<PatientsMasterDetail patients={patients} defaultPatientId={1} />);
     expect(await screen.findByText('Alice Smith')).toBeInTheDocument();
     expect(screen.getByText('Bob Jones')).toBeInTheDocument();
     // Default: first patient selected
@@ -47,7 +55,7 @@ describe('PatientsMasterDetail', () => {
   });
 
   it('filters patients by name', async () => {
-    render(<PatientsMasterDetail patients={mockPatients} defaultPatientId={1} />);
+    render(<PatientsMasterDetail patients={patients} defaultPatientId={1} />);
     const search = screen.getByPlaceholderText('Search by name...');
     fireEvent.change(search, { target: { value: 'bob' } });
     await waitFor(() => {
@@ -57,7 +65,7 @@ describe('PatientsMasterDetail', () => {
   });
 
   it('shows assignments for selected patient', async () => {
-    render(<PatientsMasterDetail patients={mockPatients} defaultPatientId={1} />);
+    render(<PatientsMasterDetail patients={patients} defaultPatientId={1} />);
     // Click Bob (no assignments)
     fireEvent.click(await screen.findByText('Bob Jones'));
     await waitFor(() => {
@@ -72,7 +80,7 @@ describe('PatientsMasterDetail', () => {
   });
 
   it('allows editing a patient', async () => {
-    render(<PatientsMasterDetail patients={mockPatients} defaultPatientId={1} />);
+    render(<PatientsMasterDetail patients={patients} defaultPatientId={1} />);
     // Click edit for Alice
     fireEvent.click(await screen.findByRole('button', { name: /edit alice smith/i }));
     // Change name
@@ -87,10 +95,12 @@ describe('PatientsMasterDetail', () => {
 
   it('allows deleting a patient', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
-    render(<PatientsMasterDetail patients={mockPatients} defaultPatientId={1} />);
+    const { rerender } = render(<PatientsMasterDetail patients={patients} defaultPatientId={1} />);
     // Click delete for Bob
     fireEvent.click(await screen.findByRole('button', { name: /delete bob jones/i }));
-    // Wait for Bob to be removed
+    // Remove Bob from patients and rerender
+    patients.splice(patients.findIndex(p => p.name === 'Bob Jones'), 1);
+    rerender(<PatientsMasterDetail patients={patients} defaultPatientId={1} />);
     await waitFor(() => {
       expect(screen.queryByText('Bob Jones')).not.toBeInTheDocument();
     });

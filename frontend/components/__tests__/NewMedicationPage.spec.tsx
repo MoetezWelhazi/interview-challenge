@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import NewMedicationPage from '../../app/medications/new/page';
+import { NewMedicationForm } from '../NewMedicationForm';
 import '@testing-library/jest-dom';
 
 jest.mock('next/navigation', () => ({
@@ -12,9 +12,9 @@ jest.mock('../../app/api', () => ({
 
 import { apiPost } from '../../app/api';
 
-describe('NewMedicationPage', () => {
+describe('NewMedicationForm', () => {
   it('renders form fields', () => {
-    render(<NewMedicationPage />);
+    render(<NewMedicationForm />);
     expect(screen.getByLabelText('Name')).toBeInTheDocument();
     expect(screen.getByLabelText('Dosage')).toBeInTheDocument();
     expect(screen.getByLabelText('Frequency')).toBeInTheDocument();
@@ -22,7 +22,7 @@ describe('NewMedicationPage', () => {
   });
 
   it('validates required fields', async () => {
-    render(<NewMedicationPage />);
+    render(<NewMedicationForm />);
     fireEvent.click(screen.getByRole('button', { name: /add medication/i }));
     // Should not call apiPost if required fields are empty
     await waitFor(() => {
@@ -32,7 +32,7 @@ describe('NewMedicationPage', () => {
 
   it('submits form with valid data', async () => {
     (apiPost as jest.Mock).mockResolvedValueOnce({});
-    render(<NewMedicationPage />);
+    render(<NewMedicationForm />);
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Aspirin' } });
     fireEvent.change(screen.getByLabelText('Dosage'), { target: { value: '100mg' } });
     fireEvent.change(screen.getByLabelText('Frequency'), { target: { value: 'Daily' } });

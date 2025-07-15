@@ -7,7 +7,7 @@ jest.mock('../../app/api', () => ({
   apiGet: jest.fn(),
   apiPatch: jest.fn(),
 }));
-jest.mock('../../app/hooks/useDebounce', () => ({
+jest.mock('../../hooks/useDebounce', () => ({
   useDebounce: (v: string) => v,
 }));
 
@@ -15,32 +15,35 @@ global.fetch = jest.fn();
 window.confirm = jest.fn(() => true);
 window.alert = jest.fn();
 
-const mockMedications = [
-  { id: 1, name: 'Aspirin', dosage: '100mg', frequency: 'Daily' },
-  { id: 2, name: 'Ibuprofen', dosage: '200mg', frequency: 'Twice daily' },
-  { id: 3, name: 'Paracetamol', dosage: '500mg', frequency: 'Once daily' },
-];
+let medications: any[];
+beforeEach(() => {
+  medications = [
+    { id: 1, name: 'Aspirin', dosage: '100mg', frequency: 'Daily' },
+    { id: 2, name: 'Ibuprofen', dosage: '200mg', frequency: 'Twice daily' },
+    { id: 3, name: 'Paracetamol', dosage: '500mg', frequency: 'Once daily' },
+  ];
+});
 
 import { apiGet, apiPatch } from '../../app/api';
 (apiGet as jest.Mock).mockImplementation((url: string) => {
-  if (url === '/medications') return Promise.resolve(mockMedications);
+  if (url === '/medications') return Promise.resolve(medications);
   return Promise.resolve([]);
 });
 (apiPatch as jest.Mock).mockImplementation((url, data) => {
   const id = Number(url.split('/').pop());
-  return Promise.resolve({ ...mockMedications.find(m => m.id === id), ...data });
+  return Promise.resolve({ ...medications.find(m => m.id === id), ...data });
 });
 
 describe('MedicationsPage', () => {
   it('renders medication list', async () => {
-    render(<MedicationsPage />);
+    render(<MedicationsPage initialMedications={medications} />);
     expect(await screen.findByText('Aspirin')).toBeInTheDocument();
     expect(screen.getByText('Ibuprofen')).toBeInTheDocument();
     expect(screen.getByText('Paracetamol')).toBeInTheDocument();
   });
 
   it('filters medications by search', async () => {
-    render(<MedicationsPage />);
+    render(<MedicationsPage initialMedications={medications} />);
     const search = screen.getByPlaceholderText('Search medications...');
     fireEvent.change(search, { target: { value: 'ibu' } });
     await waitFor(() => {
@@ -51,7 +54,7 @@ describe('MedicationsPage', () => {
   });
 
   it('sorts medications by name, dosage, and frequency', async () => {
-    render(<MedicationsPage />);
+    render(<MedicationsPage initialMedications={medications} />);
     // Default sort by name asc
     await screen.findByText('Aspirin');
     let items = screen.getAllByRole('listitem').filter(li => !li.textContent?.includes('No medications found'));
@@ -77,7 +80,7 @@ describe('MedicationsPage', () => {
   });
 
   it('toggles sort direction', async () => {
-    render(<MedicationsPage />);
+    render(<MedicationsPage initialMedications={medications} />);
     // Default asc
     await screen.findByText('Aspirin');
     let items = screen.getAllByRole('listitem').filter(li => !li.textContent?.includes('No medications found'));
@@ -91,7 +94,7 @@ describe('MedicationsPage', () => {
   });
 
   it('allows editing a medication', async () => {
-    render(<MedicationsPage initialMedications={mockMedications} />);
+    render(<MedicationsPage initialMedications={medications} />);
     fireEvent.click(await screen.findByRole('button', { name: /edit aspirin/i }));
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Aspirin Updated' } });
     fireEvent.change(screen.getByLabelText('Dosage'), { target: { value: '150mg' } });
@@ -107,8 +110,10 @@ describe('MedicationsPage', () => {
 
   it('allows deleting a medication', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
-    render(<MedicationsPage initialMedications={mockMedications} />);
+    const { rerender } = render(<MedicationsPage initialMedications={medications} />);
     fireEvent.click(await screen.findByRole('button', { name: /delete ibuprofen/i }));
+    medications.splice(medications.findIndex(m => m.name === 'Ibuprofen'), 1);
+    rerender(<MedicationsPage initialMedications={medications} />);
     await waitFor(() => {
       expect(screen.queryByText('Ibuprofen')).not.toBeInTheDocument();
     });

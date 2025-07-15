@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import NewAssignmentPage from '../../app/assignments/new/page';
+import { NewAssignmentForm } from '../NewAssignmentForm';
 import '@testing-library/jest-dom';
 
 jest.mock('next/navigation', () => ({
@@ -28,9 +28,9 @@ const mockMedications = [
   return Promise.resolve([]);
 });
 
-describe('NewAssignmentPage', () => {
+describe('NewAssignmentForm', () => {
   it('renders form fields after loading', async () => {
-    render(<NewAssignmentPage />);
+    render(<NewAssignmentForm />);
     expect(await screen.findByLabelText('Patient')).toBeInTheDocument();
     expect(screen.getByLabelText('Medication')).toBeInTheDocument();
     expect(screen.getByLabelText('Start Date')).toBeInTheDocument();
@@ -39,7 +39,7 @@ describe('NewAssignmentPage', () => {
   });
 
   it('validates required fields', async () => {
-    render(<NewAssignmentPage />);
+    render(<NewAssignmentForm />);
     await screen.findByLabelText('Patient');
     fireEvent.click(screen.getByRole('button', { name: /assign/i }));
     await waitFor(() => {
@@ -49,7 +49,7 @@ describe('NewAssignmentPage', () => {
 
   it('submits form with valid data', async () => {
     (apiPost as jest.Mock).mockResolvedValueOnce({});
-    render(<NewAssignmentPage />);
+    render(<NewAssignmentForm />);
     fireEvent.change(await screen.findByLabelText('Patient'), { target: { value: '1' } });
     fireEvent.change(screen.getByLabelText('Medication'), { target: { value: '10' } });
     fireEvent.change(screen.getByLabelText('Start Date'), { target: { value: '2024-06-01' } });

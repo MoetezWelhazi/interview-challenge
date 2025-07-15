@@ -7,7 +7,7 @@ jest.mock('../../app/api', () => ({
   apiGet: jest.fn(),
   apiPatch: jest.fn(),
 }));
-jest.mock('../../app/hooks/useDebounce', () => ({
+jest.mock('../../hooks/useDebounce', () => ({
   useDebounce: (v: string) => v,
 }));
 
@@ -15,32 +15,35 @@ global.fetch = jest.fn();
 window.confirm = jest.fn(() => true);
 window.alert = jest.fn();
 
-const mockAssignments = [
-  { id: 1, patient: { name: 'Alice' }, medication: { name: 'Aspirin' }, startDate: '2024-06-01', days: 10, remainingDays: 5 },
-  { id: 2, patient: { name: 'Bob' }, medication: { name: 'Ibuprofen' }, startDate: '2024-06-10', days: 5, remainingDays: 0 },
-  { id: 3, patient: { name: 'Charlie' }, medication: { name: 'Paracetamol' }, startDate: '2024-06-05', days: 7, remainingDays: 2 },
-];
+let assignments: any[];
+beforeEach(() => {
+  assignments = [
+    { id: 1, patient: { name: 'Alice' }, medication: { name: 'Aspirin' }, startDate: '2024-06-01', days: 10, remainingDays: 5 },
+    { id: 2, patient: { name: 'Bob' }, medication: { name: 'Ibuprofen' }, startDate: '2024-06-10', days: 5, remainingDays: 0 },
+    { id: 3, patient: { name: 'Charlie' }, medication: { name: 'Paracetamol' }, startDate: '2024-06-05', days: 7, remainingDays: 2 },
+  ];
+});
 
 import { apiGet, apiPatch } from '../../app/api';
 (apiGet as jest.Mock).mockImplementation((url: string) => {
-  if (url === '/assignments/remaining-days') return Promise.resolve(mockAssignments);
+  if (url === '/assignments/remaining-days') return Promise.resolve(assignments);
   return Promise.resolve([]);
 });
 (apiPatch as jest.Mock).mockImplementation((url, data) => {
   const id = Number(url.split('/').pop());
-  return Promise.resolve({ ...mockAssignments.find(a => a.id === id), ...data });
+  return Promise.resolve({ ...assignments.find(a => a.id === id), ...data });
 });
 
 describe('AssignmentsPage', () => {
   it('renders assignment list', async () => {
-    render(<AssignmentsPage />);
+    render(<AssignmentsPage initialAssignments={assignments} />);
     expect(await screen.findByText('Alice')).toBeInTheDocument();
     expect(screen.getByText('Bob')).toBeInTheDocument();
     expect(screen.getByText('Charlie')).toBeInTheDocument();
   });
 
   it('filters assignments by search', async () => {
-    render(<AssignmentsPage />);
+    render(<AssignmentsPage initialAssignments={assignments} />);
     const search = screen.getByPlaceholderText('Search assignments...');
     fireEvent.change(search, { target: { value: 'ibu' } });
     await waitFor(() => {
@@ -51,7 +54,7 @@ describe('AssignmentsPage', () => {
   });
 
   it('sorts assignments by patient, medication, start date, days, and remaining days', async () => {
-    render(<AssignmentsPage />);
+    render(<AssignmentsPage initialAssignments={assignments} />);
     await screen.findByText('Alice');
     let items = screen.getAllByRole('listitem').filter(li => !li.textContent?.includes('No assignments found'));
     // Default sort by patient asc
@@ -93,7 +96,7 @@ describe('AssignmentsPage', () => {
   });
 
   it('toggles sort direction', async () => {
-    render(<AssignmentsPage />);
+    render(<AssignmentsPage initialAssignments={assignments} />);
     await screen.findByText('Alice');
     let items = screen.getAllByRole('listitem').filter(li => !li.textContent?.includes('No assignments found'));
     expect(items[0]).toHaveTextContent('Alice');
@@ -106,7 +109,7 @@ describe('AssignmentsPage', () => {
   });
 
   it('allows editing an assignment', async () => {
-    render(<AssignmentsPage initialAssignments={mockAssignments} />);
+    render(<AssignmentsPage initialAssignments={assignments} />);
     fireEvent.click(await screen.findByRole('button', { name: /edit alice aspirin/i }));
     fireEvent.change(screen.getByLabelText('Days'), { target: { value: '15' } });
     fireEvent.click(screen.getByRole('button', { name: /save/i }));
@@ -118,8 +121,10 @@ describe('AssignmentsPage', () => {
 
   it('allows deleting an assignment', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
-    render(<AssignmentsPage initialAssignments={mockAssignments} />);
+    const { rerender } = render(<AssignmentsPage initialAssignments={assignments} />);
     fireEvent.click(await screen.findByRole('button', { name: /delete bob ibuprofen/i }));
+    assignments.splice(assignments.findIndex(a => a.patient.name === 'Bob' && a.medication.name === 'Ibuprofen'), 1);
+    rerender(<AssignmentsPage initialAssignments={assignments} />);
     await waitFor(() => {
       expect(screen.queryByText('Bob')).not.toBeInTheDocument();
     });
