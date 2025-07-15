@@ -47,6 +47,56 @@ describe('Patient API (e2e)', () => {
       .expect(400);
   });
 
+  it('should not create a patient with empty name', async () => {
+    await request(app.getHttpServer())
+      .post('/patients')
+      .send({ name: '', dateOfBirth: '1990-01-01' })
+      .expect(400);
+  });
+
+  it('should not create a patient with whitespace-only name', async () => {
+    await request(app.getHttpServer())
+      .post('/patients')
+      .send({ name: '   ', dateOfBirth: '1990-01-01' })
+      .expect(400);
+  });
+
+  it('should not create a patient with future date of birth', async () => {
+    const futureDate = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365).toISOString().slice(0, 10);
+    await request(app.getHttpServer())
+      .post('/patients')
+      .send({ name: 'Future Person', dateOfBirth: futureDate })
+      .expect(400);
+  });
+
+  it('should not allow duplicate patient names on create', async () => {
+    // Create a patient
+    await request(app.getHttpServer())
+      .post('/patients')
+      .send({ name: 'Unique Patient', dateOfBirth: '1985-01-01' })
+      .expect(201);
+    // Try to create another with the same name
+    await request(app.getHttpServer())
+      .post('/patients')
+      .send({ name: 'Unique Patient', dateOfBirth: '1990-01-01' })
+      .expect(400);
+  });
+
+  it('should not allow duplicate patient names on update', async () => {
+    // Create two patients
+    const res1 = await request(app.getHttpServer())
+      .post('/patients')
+      .send({ name: 'Patient One', dateOfBirth: '1980-01-01' });
+    const res2 = await request(app.getHttpServer())
+      .post('/patients')
+      .send({ name: 'Patient Two', dateOfBirth: '1981-01-01' });
+    // Try to update the second to have the same name as the first
+    await request(app.getHttpServer())
+      .patch(`/patients/${res2.body.id}`)
+      .send({ name: 'Patient One' })
+      .expect(400);
+  });
+
   it('should list patients', async () => {
     const res = await request(app.getHttpServer())
       .get('/patients')

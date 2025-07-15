@@ -41,6 +41,62 @@ describe('Medication API (e2e)', () => {
       .expect(400);
   });
 
+  it('should not create a medication with empty name', async () => {
+    await request(app.getHttpServer())
+      .post('/medications')
+      .send({ name: '', dosage: '10mg', frequency: 'Once daily' })
+      .expect(400);
+  });
+
+  it('should not create a medication with whitespace-only name', async () => {
+    await request(app.getHttpServer())
+      .post('/medications')
+      .send({ name: '   ', dosage: '10mg', frequency: 'Once daily' })
+      .expect(400);
+  });
+
+  it('should not create a medication with empty dosage', async () => {
+    await request(app.getHttpServer())
+      .post('/medications')
+      .send({ name: 'Med', dosage: '', frequency: 'Once daily' })
+      .expect(400);
+  });
+
+  it('should not create a medication with empty frequency', async () => {
+    await request(app.getHttpServer())
+      .post('/medications')
+      .send({ name: 'Med', dosage: '10mg', frequency: '' })
+      .expect(400);
+  });
+
+  it('should not allow duplicate medication names on create', async () => {
+    // Create a medication
+    await request(app.getHttpServer())
+      .post('/medications')
+      .send({ name: 'UniqueMed', dosage: '10mg', frequency: 'Once daily' })
+      .expect(201);
+    // Try to create another with the same name
+    await request(app.getHttpServer())
+      .post('/medications')
+      .send({ name: 'UniqueMed', dosage: '20mg', frequency: 'Twice daily' })
+      .expect(400);
+  });
+
+  it('should not allow duplicate medication names on update', async () => {
+    // Create two medications
+    const res1 = await request(app.getHttpServer())
+      .post('/medications')
+      .send({ name: 'MedOne', dosage: '10mg', frequency: 'Once daily' });
+    const res2 = await request(app.getHttpServer())
+      .post('/medications')
+      .send({ name: 'MedTwo', dosage: '20mg', frequency: 'Twice daily' });
+    // Try to update the second to have the same name as the first
+    await request(app.getHttpServer())
+      .patch(`/medications/${res2.body.id}`)
+      .send({ name: 'MedOne' })
+      .expect(400);
+  });
+
   it('should list medications', async () => {
     const res = await request(app.getHttpServer())
       .get('/medications')

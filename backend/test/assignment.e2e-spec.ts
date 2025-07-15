@@ -67,6 +67,41 @@ describe('Assignment API (e2e)', () => {
       .expect(400);
   });
 
+  it('should not assign with negative days', async () => {
+    await request(app.getHttpServer())
+      .post('/assignments')
+      .send({ patientId, medicationId, startDate: '2024-01-01', days: -5 })
+      .expect(400);
+  });
+
+  it('should not assign with zero days', async () => {
+    await request(app.getHttpServer())
+      .post('/assignments')
+      .send({ patientId, medicationId, startDate: '2024-01-01', days: 0 })
+      .expect(400);
+  });
+
+  it('should not assign with non-integer days', async () => {
+    await request(app.getHttpServer())
+      .post('/assignments')
+      .send({ patientId, medicationId, startDate: '2024-01-01', days: 2.5 })
+      .expect(400);
+  });
+
+  it('should not assign with invalid patientId', async () => {
+    await request(app.getHttpServer())
+      .post('/assignments')
+      .send({ patientId: 999999, medicationId, startDate: '2024-01-01', days: 5 })
+      .expect(400);
+  });
+
+  it('should not assign with invalid medicationId', async () => {
+    await request(app.getHttpServer())
+      .post('/assignments')
+      .send({ patientId, medicationId: 999999, startDate: '2024-01-01', days: 5 })
+      .expect(400);
+  });
+
   it('should list assignments for a patient', async () => {
     const res = await request(app.getHttpServer())
       .get(`/patients/${patientId}/assignments`)
