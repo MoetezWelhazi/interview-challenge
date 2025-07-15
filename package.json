@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "date-fns": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0"
+  }
+}
