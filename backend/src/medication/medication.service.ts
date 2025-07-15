@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Medication } from './medication.entity';
@@ -13,8 +13,17 @@ export class MedicationService {
   ) {}
 
   async create(dto: CreateMedicationDto): Promise<Medication> {
+    const existing = await this.medicationRepo.findOne({ where: { name: dto.name } });
+    if (existing) throw new BadRequestException('Medication name must be unique');
     const medication = this.medicationRepo.create(dto);
-    return this.medicationRepo.save(medication);
+    try {
+      return await this.medicationRepo.save(medication);
+    } catch (err) {
+      if (err.code === 'SQLITE_CONSTRAINT' || err.message?.includes('UNIQUE')) {
+        throw new BadRequestException('Medication name must be unique');
+      }
+      throw err;
+    }
   }
 
   async findAll(): Promise<Medication[]> {
@@ -29,8 +38,19 @@ export class MedicationService {
 
   async update(id: number, dto: UpdateMedicationDto): Promise<Medication> {
     const medication = await this.findOne(id);
+    if (dto.name && dto.name !== medication.name) {
+      const existing = await this.medicationRepo.findOne({ where: { name: dto.name } });
+      if (existing) throw new BadRequestException('Medication name must be unique');
+    }
     Object.assign(medication, dto);
-    return this.medicationRepo.save(medication);
+    try {
+      return await this.medicationRepo.save(medication);
+    } catch (err) {
+      if (err.code === 'SQLITE_CONSTRAINT' || err.message?.includes('UNIQUE')) {
+        throw new BadRequestException('Medication name must be unique');
+      }
+      throw err;
+    }
   }
 
   async remove(id: number): Promise<void> {
